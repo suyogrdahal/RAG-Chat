@@ -4,45 +4,51 @@
 
 ```mermaid
 flowchart LR
-  %% ========== Actors ==========
-  A1[Org Admin<br/>Browser] -->|HTTPS| FE1[Admin Dashboard<br/>Next.js/React]
-  A2[Website Visitor<br/>Browser] -->|Loads script tag| W1[Embeddable Widget<br/>&lt;aichatbot/&gt; Web Component]
 
-  %% ========== Frontend to API ==========
-  FE1 -->|JWT (admin login)| API[Backend API<br/>FastAPI]
-  W1 -->|Signed Widget Token<br/>or Org Public ID| API
+  %% Actors
+  Admin[Org Admin Browser]
+  Visitor[Website Visitor Browser]
 
-  %% ========== Core Backend Modules ==========
-  API --> AUTH[Auth + Tenant Context<br/>(Derive org_id server-side)]
-  API --> DOC[Document Service<br/>Upload / Status]
-  API --> RAG[RAG Service<br/>Retrieve + Prompt + Generate]
+  %% Frontend
+  Dashboard[Admin Dashboard - Next.js]
+  Widget[Embeddable Chat Widget]
 
-  %% ========== Storage ==========
-  DOC --> DB[(PostgreSQL<br/>orgs/users/docs)]
-  DOC --> OBJ[(Object Storage<br/>Local/S3/GCS)]
+  %% Backend
+  API[Backend API - FastAPI]
+  Auth[Auth and Tenant Context]
+  DocSvc[Document Service]
+  RAG[RAG Service]
 
-  %% ========== Embeddings + Vector DB ==========
-  DOC --> EMB[Local Embeddings<br/>(e.g., bge-small)]
-  EMB --> VDB[(Vector DB<br/>Qdrant)]
-  RAG -->|Similarity Search<br/>FILTER org_id| VDB
+  %% Storage
+  DB[(PostgreSQL)]
+  Storage[(Object Storage)]
+  VDB[(Vector DB - Qdrant)]
 
-  %% ========== LLM ==========
-  RAG -->|Prompt + Retrieved Context| LLM[LLM API<br/>(cheap model)]
-  LLM -->|Answer| API
+  %% AI
+  Embed[Local Embedding Model]
+  LLM[LLM API - Cheap Model]
 
-  %% ========== Response Flow ==========
-  API -->|Chat Response| W1
-  API -->|Admin APIs| FE1
+  %% Flows
+  Admin --> Dashboard
+  Dashboard -->|JWT| API
 
-  %% ========== Security Controls ==========
-  subgraph Controls[Security & Abuse Prevention]
-    C1[Domain Whitelist<br/>(widget theft protection)]
-    C2[Rate Limiting<br/>per org + per IP]
-    C3[Token Limits<br/>max tokens per request]
-    C4[Logging/Redaction<br/>no secrets in logs]
-  end
+  Visitor --> Widget
+  Widget -->|Signed Token| API
 
-  API --- C2
-  API --- C3
-  W1 --- C1
-  API --- C4
+  API --> Auth
+  API --> DocSvc
+  API --> RAG
+
+  DocSvc --> DB
+  DocSvc --> Storage
+
+  DocSvc --> Embed
+  Embed --> VDB
+
+  RAG -->|Similarity Search (org_id filter)| VDB
+  RAG -->|Prompt + Context| LLM
+  LLM --> API
+
+  API --> Widget
+  API --> Dashboard
+
