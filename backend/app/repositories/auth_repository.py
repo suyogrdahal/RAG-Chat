@@ -31,6 +31,9 @@ class AuthRepository:
             select(User).where(User.org_id == org_id, User.email == email)
         )
 
+    def get_user_by_email(self, email: str) -> User | None:
+        return self.db.scalar(select(User).where(User.email == email))
+
     def get_user_by_id(self, user_id) -> User | None:
         return self.db.get(User, user_id)
 

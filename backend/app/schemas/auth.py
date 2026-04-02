@@ -13,10 +13,9 @@ class SignupRequest(BaseModel):
 
 
 class SignupResponse(BaseModel):
-    org_id: UUID
-    user_id: UUID
-    access_token: str
-    token_type: str = "bearer"
+    org_id: UUID | None = None
+    user_id: UUID | None = None
+    message: str = "Signup successful"
 
 
 class LoginRequest(BaseModel):

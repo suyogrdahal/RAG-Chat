@@ -15,7 +15,7 @@ from app.core.security import (
     hash_refresh_token,
     verify_password,
 )
-from app.db.models import OrgMembership, Organization, RefreshToken, User
+from app.db.models import OrgMembership, Organization, RefreshToken, User, generate_widget_public_key
 from app.repositories.auth_repository import AuthRepository
 from app.repositories.memberships import MembershipRepository
 from app.schemas.auth import (
@@ -66,6 +66,7 @@ class AuthService:
             allowed_domains=[],
             rate_limit_per_minute=60,
             max_tokens_per_request=800,
+            widget_public_key=generate_widget_public_key(),
         )
         user = User(
             org_id=org.id,
@@ -110,14 +111,7 @@ class AuthService:
 
         self.repo.refresh(org)
         self.repo.refresh(user)
-        access_token = create_access_token(
-            {
-                "sub": user.id,
-                "org_id": org.id,
-                "role": user.role,
-            }
-        )
-        return SignupResponse(org_id=org.id, user_id=user.id, access_token=access_token)
+        return SignupResponse(org_id=org.id, user_id=user.id, message="Signup successful")
 
     def _invalid_refresh_token_error(self) -> HTTPException:
         return HTTPException(
@@ -145,35 +139,39 @@ class AuthService:
         return refresh_token_value, refresh_token
 
     def login(self, payload: LoginRequest) -> LoginResponse:
+        # Look up user by email first (single source of truth for password verification)
+        user = self.repo.get_user_by_email(payload.email)
+        if user is None or user.password_hash is None:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials or user not found",
+            )
+        if not user.is_active:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Inactive user",
+            )
+        if not verify_password(payload.password, user.password_hash):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid credentials password",
+            )
+
+        # Resolve organization context after password validation
         org = None
         if payload.org_id is not None:
             org = self.repo.get_organization_by_id(payload.org_id)
         elif payload.org_slug:
             org = self.repo.get_organization_by_slug(payload.org_slug)
+        else:
+            # fallback to user's active_org_id
+            if user.org_id:
+                org = self.repo.get_organization_by_id(user.org_id)
 
         if org is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
-            )
-
-        user = self.repo.get_user_by_org_and_email(org.id, payload.email)
-        if user is None or user.password_hash is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
-            )
-
-        if not user.is_active:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
-            )
-
-        if not verify_password(payload.password, user.password_hash):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
+                detail="No organization found for user",
             )
 
         now = datetime.now(timezone.utc)

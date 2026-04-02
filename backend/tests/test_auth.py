@@ -167,7 +167,6 @@ def test_login_success_returns_access_token_and_updates_last_login() -> None:
         response = client.post(
             "/auth/login",
             json={
-                "org_slug": org.slug,
                 "email": user.email,
                 "password": password,
             },

@@ -102,6 +102,11 @@ def upgrade() -> None:
         "CREATE INDEX IF NOT EXISTS ix_document_chunks_org_id_doc_id "
         "ON document_chunks (org_id, doc_id)"
     )
+    op.execute("CREATE INDEX IF NOT EXISTS ix_document_chunks_doc_id ON document_chunks (doc_id)")
+    op.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS uq_document_chunks_org_doc_chunk_hash "
+        "ON document_chunks (org_id, doc_id, chunk_index, content_hash)"
+    )
     op.execute(
         "CREATE INDEX IF NOT EXISTS ix_document_chunks_embedding_ivfflat "
         "ON document_chunks USING ivfflat (embedding vector_cosine_ops) "
@@ -111,6 +116,8 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     op.execute("DROP INDEX IF EXISTS ix_document_chunks_embedding_ivfflat")
+    op.execute("DROP INDEX IF EXISTS uq_document_chunks_org_doc_chunk_hash")
+    op.execute("DROP INDEX IF EXISTS ix_document_chunks_doc_id")
     op.drop_index("ix_document_chunks_org_id_doc_id", table_name="document_chunks")
     op.drop_table("document_chunks")
 

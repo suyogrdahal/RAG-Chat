@@ -72,7 +72,7 @@ def login(
             )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials",
+                detail=exc.detail if exc.detail else "Something is wrong.",
                 headers={"WWW-Authenticate": "Bearer"},
             ) from exc
         raise

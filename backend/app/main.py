@@ -9,7 +9,12 @@ from app.core.config import get_settings
 from app.core.logging import configure_logging
 from app.api.deps.auth import require_org, require_role
 from app.api.auth import router as auth_router
+from app.api.chat import router as chat_router
+from app.api.routes.chat_logs import router as chat_logs_router
+from app.api.documents import router as documents_router
+from app.api.org import router as org_router
 from app.api.users import router as users_router
+from app.api.widget import router as widget_router
 from app.db.models import OrgMembership, Organization, User
 from app.db.session import get_db
 from app.middlewares.request_logging import RequestLoggingMiddleware
@@ -33,7 +38,12 @@ app.add_middleware(
 app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(auth_router)
+app.include_router(chat_router)
+app.include_router(chat_logs_router)
+app.include_router(documents_router)
+app.include_router(org_router)
 app.include_router(users_router)
+app.include_router(widget_router)
 
 
 @app.get("/health")
@@ -62,6 +72,8 @@ class OrgCreate(BaseModel):
     allowed_domains: list[str] | None = None
     rate_limit_per_minute: int | None = None
     max_tokens_per_request: int | None = None
+    widget_public_key: str | None = None
+    organization_description: str | None = None
 
 
 class UserCreate(BaseModel):
@@ -96,6 +108,10 @@ def create_org(
         org.rate_limit_per_minute = payload.rate_limit_per_minute
     if payload.max_tokens_per_request is not None:
         org.max_tokens_per_request = payload.max_tokens_per_request
+    if payload.widget_public_key is not None:
+        org.widget_public_key = payload.widget_public_key
+    if payload.organization_description is not None:
+        org.organization_description = payload.organization_description
     db.add(org)
     db.commit()
     db.refresh(org)
@@ -107,6 +123,8 @@ def create_org(
         "allowed_domains": org.allowed_domains,
         "rate_limit_per_minute": org.rate_limit_per_minute,
         "max_tokens_per_request": org.max_tokens_per_request,
+        "widget_public_key": org.widget_public_key,
+        "organization_description": org.organization_description,
         "created_at": org.created_at,
         "updated_at": org.updated_at,
     }
@@ -131,6 +149,8 @@ def get_org(
         "allowed_domains": org.allowed_domains,
         "rate_limit_per_minute": org.rate_limit_per_minute,
         "max_tokens_per_request": org.max_tokens_per_request,
+        "widget_public_key": org.widget_public_key,
+        "organization_description": org.organization_description,
         "created_at": org.created_at,
         "updated_at": org.updated_at,
     }

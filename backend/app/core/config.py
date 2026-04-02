@@ -1,5 +1,9 @@
 from functools import lru_cache
+from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+_ENV_PATH = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
@@ -38,9 +42,23 @@ class Settings(BaseSettings):
     db_name: str = "rag_chat"
     db_user: str = "rag_chat"
     db_password: str = ""
+    redis_url: str = "redis://127.0.0.1:6379/0"
+    public_rate_limit_org_per_min: int = 30
+    public_rate_limit_ip_per_min: int = 10
+    public_query_max_chars: int = 2000
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_api_base: str = "https://api.openai.com/v1"
+    openai_timeout_seconds: float = 20.0
+    openai_temperature: float = 0.2
+    openai_max_tokens: int = 512
+    rag_top_k: int = 5
+    rag_similarity_threshold: float = 0.2
+    rag_reserved_answer_tokens: int = 256
+    rag_max_context_chars: int = 6000
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        env_file=(str(_ENV_PATH), ".env"),
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",

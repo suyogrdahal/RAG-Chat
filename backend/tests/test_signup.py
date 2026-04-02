@@ -2,7 +2,6 @@ from uuid import UUID, uuid4
 
 from fastapi.testclient import TestClient
 
-from app.core.security import decode_access_token
 from app.db.models import Organization, User
 from app.db.session import SessionLocal
 from app.main import app
@@ -39,6 +38,9 @@ def test_signup_creates_org_and_user() -> None:
         response = client.post("/auth/signup", json=payload)
         assert response.status_code == 201, response.text
         body = response.json()
+        assert "access_token" not in body
+        assert "refresh_token" not in body
+        assert body.get("message") == "Signup successful"
         org_id = UUID(body["org_id"])
         user_id = UUID(body["user_id"])
 
@@ -91,13 +93,10 @@ def test_signup_returns_access_token_with_claims() -> None:
         response = client.post("/auth/signup", json=payload)
         assert response.status_code == 201, response.text
         body = response.json()
+        assert "access_token" not in body
+        assert "refresh_token" not in body
+        assert body.get("message") == "Signup successful"
         org_id = UUID(body["org_id"])
         user_id = UUID(body["user_id"])
-
-        token = body["access_token"]
-        claims = decode_access_token(token)
-        assert claims["sub"] == str(user_id)
-        assert claims["org_id"] == str(org_id)
-        assert claims["role"] == "owner"
     finally:
         _cleanup(org_id, user_id)
