@@ -1,3 +1,4 @@
+#
 # High-Level Architecture Diagram
 
 ## System Overview (End-to-End)
