@@ -1,0 +1,195 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: App stack for RAG Chat (single EC2 host, IAM profile, SG, optional EIP).
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Description: Name of the deployed network stack used for cross-stack imports.
+  AmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  InstanceType:
+    Type: String
+    Default: t3.micro
+    AllowedValues:
+      - t2.micro
+      - t3.micro
+      - t3.small
+  KeyPairName:
+    Type: String
+    Default: ""
+    Description: Optional EC2 KeyPair for SSH access.
+  AdminCidr:
+    Type: String
+    Default: 0.0.0.0/0
+    Description: CIDR block allowed to SSH to EC2 (change before production).
+  AssociateElasticIp:
+    Type: String
+    Default: "true"
+    AllowedValues: ["true", "false"]
+  DeploymentTagKey:
+    Type: String
+    Default: DeployGroup
+  DeploymentTagValue:
+    Type: String
+    Default: ragchat-app
+
+Conditions:
+  UseKeyPair: !Not [!Equals [!Ref KeyPairName, ""]]
+  UseEip: !Equals [!Ref AssociateElasticIp, "true"]
+
+Resources:
+  AppSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for RAG Chat EC2 host.
+      VpcId: !ImportValue
+        "Fn::Sub": "rag-network-VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
+          CidrIp: !Ref AdminCidr
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-app-sg"
+
+  AppInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: CodeDeployRegionBucketRead
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                Resource:
+                  - !Sub "arn:aws:s3:::aws-codedeploy-${AWS::Region}/*"
+                  - !Sub "arn:aws:s3:::aws-codedeploy-${AWS::Region}-*/*"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-instance-role"
+
+  AppInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref AppInstanceRole
+
+  AppInstance:
+    Type: AWS::EC2::Instance
+    Properties:
+      ImageId: !Ref AmiId
+      InstanceType: !Ref InstanceType
+      IamInstanceProfile: !Ref AppInstanceProfile
+      KeyName: !If [UseKeyPair, !Ref KeyPairName, !Ref AWS::NoValue]
+      SubnetId: !ImportValue
+        "Fn::Sub": "rag-network-PublicSubnetA"
+      SecurityGroupIds:
+        - !Ref AppSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-app"
+        - Key: !Ref DeploymentTagKey
+          Value: !Ref DeploymentTagValue
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          set -euxo pipefail
+
+          yum update -y
+          yum install -y python3 python3-pip git ruby wget jq awscli
+          amazon-linux-extras install -y nginx1
+
+          curl -fsSL https://rpm.nodesource.com/setup_18.x | bash -
+          yum install -y nodejs
+
+          systemctl enable nginx
+          systemctl start nginx
+
+          # Install CodeDeploy agent (EC2 deployments require this agent).
+          cd /tmp
+          wget "https://aws-codedeploy-${AWS::Region}.s3.${AWS::Region}.amazonaws.com/latest/install" -O codedeploy-install || true
+          if [ ! -s codedeploy-install ]; then
+            wget "https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install" -O codedeploy-install
+          fi
+          chmod +x codedeploy-install
+          ./codedeploy-install auto || true
+          systemctl enable codedeploy-agent || true
+          systemctl start codedeploy-agent || true
+
+          mkdir -p /opt/app/current /opt/app/backend /opt/app/frontend /opt/app/widget /opt/app/shared /var/www/widget
+          touch /opt/app/shared/.env
+          chown -R ec2-user:ec2-user /opt/app /var/www/widget
+
+  AppElasticIp:
+    Type: AWS::EC2::EIP
+    Condition: UseEip
+    Properties:
+      Domain: vpc
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-eip"
+
+  AppElasticIpAssociation:
+    Type: AWS::EC2::EIPAssociation
+    Condition: UseEip
+    Properties:
+      InstanceId: !Ref AppInstance
+      EIP: !Ref AppElasticIp
+
+Outputs:
+  InstanceId:
+    Value: !Ref AppInstance
+    Export:
+      Name: !Sub "${AWS::StackName}-InstanceId"
+
+  PublicIp:
+    Value: !If [UseEip, !Ref AppElasticIp, !GetAtt AppInstance.PublicIp]
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicIp"
+
+  PublicDnsName:
+    Value: !GetAtt AppInstance.PublicDnsName
+    Export:
+      Name: !Sub "${AWS::StackName}-PublicDnsName"
+
+  AppSecurityGroupId:
+    Value: !Ref AppSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-AppSecurityGroupId"
+
+  DeploymentTagKey:
+    Value: !Ref DeploymentTagKey
+    Export:
+      Name: !Sub "${AWS::StackName}-DeploymentTagKey"
+
+  DeploymentTagValue:
+    Value: !Ref DeploymentTagValue
+    Export:
+      Name: !Sub "${AWS::StackName}-DeploymentTagValue"

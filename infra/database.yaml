@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Database stack for RAG Chat (private RDS PostgreSQL, subnet group, security group).
+
+Parameters:
+  NetworkStackName:
+    Type: String
+    Description: Name of the deployed network stack used for cross-stack imports.
+  DBName:
+    Type: String
+    Default: ragchat
+  DBUser:
+    Type: String
+    Default: ragchat_admin
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9_]*$"
+  DBPassword:
+    Type: String
+    NoEcho: true
+    MinLength: 8
+    MaxLength: 128
+  DBAllocatedStorage:
+    Type: Number
+    Default: 20
+    MinValue: 20
+    MaxValue: 100
+  DBInstanceClass:
+    Type: String
+    Default: db.t3.micro
+  DBEngineVersion:
+    Type: String
+    Default: "16.3"
+
+Resources:
+  DatabaseSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL access from within the VPC CIDR.
+      VpcId: !ImportValue
+        "Fn::Sub": "rag-network-VpcId"
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          CidrIp: !ImportValue
+            "Fn::Sub": "rag-network-VpcCidr"
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-db-sg"
+
+  DBSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS instance.
+      SubnetIds:
+        - !ImportValue
+          "Fn::Sub": "rag-network-PrivateSubnetA"
+        - !ImportValue
+          "Fn::Sub": "rag-network-PrivateSubnetB"
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-db-subnet-group"
+
+  PostgreSQLInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      Engine: postgres
+      EngineVersion: !Ref DBEngineVersion
+      DBName: !Ref DBName
+      MasterUsername: !Ref DBUser
+      MasterUserPassword: !Ref DBPassword
+      DBInstanceClass: !Ref DBInstanceClass
+      AllocatedStorage: !Ref DBAllocatedStorage
+      StorageType: gp2
+      PubliclyAccessible: false
+      MultiAZ: false
+      DBSubnetGroupName: !Ref DBSubnetGroup
+      VPCSecurityGroups:
+        - !Ref DatabaseSecurityGroup
+      BackupRetentionPeriod: 7
+      DeletionProtection: false
+      AutoMinorVersionUpgrade: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${AWS::StackName}-postgres"
+
+Outputs:
+  DbEndpoint:
+    Value: !GetAtt PostgreSQLInstance.Endpoint.Address
+    Export:
+      Name: !Sub "${AWS::StackName}-DbEndpoint"
+
+  DbPort:
+    Value: !GetAtt PostgreSQLInstance.Endpoint.Port
+    Export:
+      Name: !Sub "${AWS::StackName}-DbPort"
+
+  DbName:
+    Value: !Ref DBName
+    Export:
+      Name: !Sub "${AWS::StackName}-DbName"
+
+  DbSecurityGroupId:
+    Value: !Ref DatabaseSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-DbSecurityGroupId"

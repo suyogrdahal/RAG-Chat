@@ -1,0 +1,16 @@
+[Unit]
+Description=FastAPI service (Uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=ec2-user
+Group=ec2-user
+WorkingDirectory=/opt/app/current/backend
+EnvironmentFile=-/opt/app/shared/.env
+ExecStart=/opt/app/venv/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
