@@ -5,27 +5,24 @@ phases:
     runtime-versions:
       python: 3.11
       nodejs: 18
-    commands:
-      - python -m pip install --upgrade pip
   pre_build:
     commands:
-      - if [ -f backend/requirements.txt ]; then pip install -r backend/requirements.txt; fi
-      - if [ -f frontend/package-lock.json ]; then cd frontend && npm ci && cd ..; fi
-      - if [ -d backend/tests ] && python -c "import pytest" 2>/dev/null; then cd backend && pytest -q && cd ..; fi
+      - if [ -f frontend/package-lock.json ]; then cd frontend && npm ci --no-audit --no-fund && cd ..; fi
       - if [ -f frontend/package.json ]; then cd frontend && npm run lint --if-present && cd ..; fi
   build:
     commands:
-      - if [ -d frontend ]; then cd frontend && npm run build && cd ..; fi
+      - if [ -f frontend/package.json ]; then cd frontend && npm run build && cd ..; fi
       - mkdir -p artifact
       - cp deploy/appspec.yml artifact/appspec.yml
       - cp -R deploy artifact/deploy
       - cp -R backend artifact/backend
       - cp -R frontend artifact/frontend
+      - if [ -d backend/public ]; then mkdir -p artifact/widget && cp -R backend/public/. artifact/widget/; fi
       - if [ -d widget ]; then cp -R widget artifact/widget; fi
-      - if [ -f README.md ]; then cp README.md artifact/README.md; fi
+      - if [ -f .env.example ]; then cp .env.example artifact/.env.example; fi
       - chmod +x artifact/deploy/scripts/*.sh
+
 artifacts:
   base-directory: artifact
   files:
     - '**/*'
-

@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if systemctl list-unit-files | grep -q '^fastapi.service'; then
-  systemctl stop fastapi.service || true
-fi
-
-if systemctl list-unit-files | grep -q '^nextjs.service'; then
-  systemctl stop nextjs.service || true
-fi
+for svc in fastapi.service nextjs.service; do
+  if systemctl list-unit-files --type=service | grep -q "^${svc}"; then
+    systemctl stop "${svc}" || true
+  fi
+done

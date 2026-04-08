@@ -2,12 +2,14 @@
 set -euo pipefail
 
 systemctl daemon-reload
-systemctl enable fastapi.service
-systemctl restart fastapi.service
 
-systemctl enable nextjs.service
-systemctl restart nextjs.service
+for svc in fastapi.service nextjs.service; do
+  if systemctl list-unit-files --type=service | grep -q "^${svc}"; then
+    systemctl enable "${svc}" >/dev/null 2>&1 || true
+    systemctl restart "${svc}"
+  fi
+done
 
 nginx -t
-systemctl enable nginx
+systemctl enable nginx >/dev/null 2>&1 || true
 systemctl reload nginx || systemctl restart nginx
