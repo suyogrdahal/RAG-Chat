@@ -1,8 +1,22 @@
+# Python cache / virtualenv
 __pycache__/
 *.pyc
+*.pyo
 .venv/
 venv/
+
+# Local env / git
 .env
 .git/
 .gitignore
+
+# Build / test artifacts
+.pytest_cache/
+.mypy_cache/
+ruff_cache/
+.coverage
+htmlcov/
+
+# Docker / docs
+Dockerfile*
 README.md
