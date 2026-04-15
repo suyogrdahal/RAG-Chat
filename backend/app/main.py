@@ -10,6 +10,7 @@ from app.core.logging import configure_logging
 from app.api.deps.auth import require_org, require_role
 from app.api.auth import router as auth_router
 from app.api.chat import router as chat_router
+from app.api.dashboard import router as dashboard_router
 from app.api.routes.chat_logs import router as chat_logs_router
 from app.api.documents import router as documents_router
 from app.api.org import router as org_router
@@ -19,6 +20,7 @@ from app.db.models import OrgMembership, Organization, User
 from app.db.session import get_db
 from app.middlewares.request_logging import RequestLoggingMiddleware
 from app.schemas.auth_context import AuthContext
+from app.services.embeddings import preload_embedding_model
 
 settings = get_settings()
 configure_logging()
@@ -39,11 +41,17 @@ app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(auth_router)
 app.include_router(chat_router)
+app.include_router(dashboard_router)
 app.include_router(chat_logs_router)
 app.include_router(documents_router)
 app.include_router(org_router)
 app.include_router(users_router)
 app.include_router(widget_router)
+
+
+@app.on_event("startup")
+def load_models() -> None:
+    preload_embedding_model()
 
 
 @app.get("/health")

@@ -150,7 +150,7 @@ def test_low_confidence_returns_fallback_no_llm_call(monkeypatch) -> None:
         org_id = org.id
         user_id = user.id
 
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _search)
         monkeypatch.setattr("app.services.chat.generate_llm_response", _llm)
 
@@ -195,7 +195,7 @@ def test_needle_question_answers_from_context(monkeypatch) -> None:
         doc_id = doc.id
         chunk_id = chunk.id
 
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _search)
         monkeypatch.setattr("app.services.chat.generate_llm_response", _llm)
 
@@ -259,7 +259,7 @@ def test_llm_sentinel_triggers_fallback(monkeypatch) -> None:
         org_id = org.id
         user_id = user.id
 
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _search)
         monkeypatch.setattr("app.services.chat.generate_llm_response", _llm)
 

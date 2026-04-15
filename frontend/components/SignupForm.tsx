@@ -4,6 +4,7 @@ import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
+import { FormErrorMessage } from "@/components/FormErrorMessage";
 
 type ValidationErrors = Record<string, string>;
 
@@ -21,10 +22,26 @@ export function SignupForm() {
   const [orgName, setOrgName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [domain, setDomain] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<ValidationErrors>({});
   const [loading, setLoading] = useState(false);
+
+  const validateDomain = (value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return null;
+
+    try {
+      const url = new URL(trimmed);
+      if (url.protocol !== "http:" && url.protocol !== "https:") {
+        return "Domain must start with http:// or https://.";
+      }
+      return null;
+    } catch {
+      return "Enter a valid website URL.";
+    }
+  };
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -33,11 +50,14 @@ export function SignupForm() {
     setError(null);
     setFieldErrors({});
 
-    if (!orgName || !email || !password) {
+    const domainError = validateDomain(domain);
+
+    if (!orgName || !email || !password || domainError) {
       setFieldErrors({
         ...(orgName ? {} : { org_name: "Organization is required." }),
         ...(email ? {} : { email: "Email is required." }),
-        ...(password ? {} : { password: "Password is required." })
+        ...(password ? {} : { password: "Password is required." }),
+        ...(domainError ? { allowed_domains: domainError } : {})
       });
       return;
     }
@@ -55,12 +75,14 @@ export function SignupForm() {
         org_name: orgName,
         org_slug: toSlug(orgName) || undefined,
         email,
-        password
+        password,
+        allowed_domains: domain.trim() ? [domain.trim()] : []
       });
 
       setSuccess("Signup successful");
       setLoading(false);
       setPassword("");
+      setDomain("");
       setTimeout(() => router.push("/login"), 800);
     } catch (err: any) {
       const backendMessage =
@@ -136,10 +158,28 @@ export function SignupForm() {
         {fieldErrors.password && <p className="text-xs text-red-600">{fieldErrors.password}</p>}
       </div>
 
+      <div className="space-y-1">
+        <label className="block text-sm font-medium text-slate-700">
+          Your Website Domain
+          <input
+            type="url"
+            inputMode="url"
+            value={domain}
+            onChange={(e) => setDomain(e.target.value)}
+            placeholder="https://www.example.com"
+            className="mt-2 w-full rounded-lg border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-slate-400 focus:outline-none"
+          />
+        </label>
+        <p className="text-xs text-slate-500">You can add other domains later.</p>
+        {fieldErrors.allowed_domains && (
+          <p className="text-xs text-red-600">{fieldErrors.allowed_domains}</p>
+        )}
+      </div>
+
       {success && (
         <p className="rounded-md bg-emerald-50 px-3 py-2 text-sm text-emerald-700">{success}</p>
       )}
-      {error && <p className="text-sm text-red-600">{error}</p>}
+      {error && <FormErrorMessage message={error} />}
 
       <button
         type="submit"

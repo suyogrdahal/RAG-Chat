@@ -8,11 +8,11 @@ from uuid import uuid4
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.ingestion.embeddings import embed_texts
 from app.ingestion.retrieval_guard import evaluate_retrieval_results
 from app.llm.wrapper import generate_llm_response
 from app.repositories.chat_logs import ChatLogsRepository
 from app.repositories.org_repository import OrgRepository
+from app.services.embeddings import embed_query
 from app.services.greetings import is_greeting
 from app.services.prompting import (
     build_fallback_message,
@@ -153,7 +153,7 @@ class ChatService:
             )
             return result
 
-        query_embedding = embed_texts([query])[0]
+        query_embedding = embed_query(query)
         chunks = await search_similar_chunks(
             db=self.db,
             org_id=org_id,

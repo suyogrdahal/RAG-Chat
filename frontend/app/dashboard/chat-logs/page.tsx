@@ -7,7 +7,6 @@ import useSWR from "swr";
 import { useRouter } from "next/navigation";
 import { fetcher } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
-import { useAuth } from "@/lib/auth";
 
 type ChatLogItem = {
   id: string;
@@ -41,7 +40,6 @@ function responseSummary(response: string): string {
 }
 
 export default function ChatLogsPage() {
-  const { logout } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const limit = Math.max(1, Math.min(100, Number(searchParams.get("limit") || 25)));
@@ -85,8 +83,8 @@ export default function ChatLogsPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-6 p-6">
-      <AppHeader title="Chat Logs" onLogout={logout} />
+    <div className="flex w-full flex-col gap-6">
+      <AppHeader title="Chat Logs" eyebrow="Activity" />
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Recent chats</h2>
@@ -220,6 +218,6 @@ export default function ChatLogsPage() {
           </div>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

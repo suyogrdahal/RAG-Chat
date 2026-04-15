@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import useSWR from "swr";
 import { AppHeader } from "@/components/AppHeader";
-import { useAuth } from "@/lib/auth";
 import { fetcher } from "@/lib/api";
 
 type SourceEntry = Record<string, unknown>;
@@ -26,7 +25,6 @@ function formatDate(value: string): string {
 }
 
 export default function ChatLogDetailPage() {
-  const { logout } = useAuth();
   const params = useParams();
   const rawId = params?.id;
   const id = Array.isArray(rawId) ? rawId[0] : rawId;
@@ -35,20 +33,20 @@ export default function ChatLogDetailPage() {
 
   if (!id) {
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">
-        <AppHeader title="Chat Log" onLogout={logout} />
+      <div className="flex w-full flex-col gap-6">
+        <AppHeader title="Chat Log" eyebrow="Activity" />
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-red-600">Invalid log id.</p>
         </section>
-      </main>
+      </div>
     );
   }
 
   if (error) {
     const detail = (error as { status?: number }).status;
     return (
-      <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">
-        <AppHeader title="Chat Log" onLogout={logout} />
+      <div className="flex w-full flex-col gap-6">
+        <AppHeader title="Chat Log" eyebrow="Activity" />
         <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <p className="text-sm text-red-600">
             {detail === 404 ? "Chat log not found." : "Failed to load chat log."}
@@ -57,13 +55,13 @@ export default function ChatLogDetailPage() {
             Back to logs
           </Link>
         </section>
-      </main>
+      </div>
     );
   }
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">
-      <AppHeader title="Chat Log" onLogout={logout} />
+    <div className="flex w-full flex-col gap-6">
+      <AppHeader title="Chat Log" eyebrow="Activity" />
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900">Chat log details</h2>
@@ -111,6 +109,6 @@ export default function ChatLogDetailPage() {
           </Link>
         </div>
       </section>
-    </main>
+    </div>
   );
 }

@@ -13,14 +13,20 @@ from app.core.logging import log_event
 from app.db.models import DocumentStatus
 from app.db.session import SessionLocal, get_db
 from app.ingestion.chunking import chunk_text
-from app.ingestion.embeddings import embed_texts
 from app.ingestion.parsers import parse_pdf, parse_txt
 from app.ingestion.pipeline import build_chunk_rows
 from app.repositories.documents_repository import DocumentsRepository
 from app.repositories.vector_repository import VectorRepository
 from app.schemas.auth_context import AuthContext
-from app.schemas.documents import DocumentListResponse, DocumentOut, DocumentStatusResponse, DocumentUploadResponse
+from app.schemas.documents import (
+    DocumentListResponse,
+    DocumentMutationResponse,
+    DocumentOut,
+    DocumentStatusResponse,
+    DocumentUploadResponse,
+)
 from app.services.documents_service import DocumentsService
+from app.services.embeddings import embed_texts
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 logger = logging.getLogger("app.documents")
@@ -111,9 +117,39 @@ def _ingest_document_background(doc_id: UUID, org_id: UUID, request_id: str | No
             org_id=str(org_id),
             exception_type=type(exc).__name__,
             message=safe_message,
+            detail=str(exc),
         )
     finally:
         session.close()
+
+
+def _reingest_document(doc_id: UUID, org_id: UUID, repo: DocumentsRepository) -> None:
+    doc = repo.get_by_id(org_id, doc_id)
+    if doc is None:
+        raise RuntimeError("Document not found")
+
+    repo.delete_chunks_for_document(org_id, doc_id)
+    doc.status = DocumentStatus.PROCESSING
+    doc.error_message = None
+    repo.commit()
+
+    try:
+        _run_ingestion_pipeline(doc_id, org_id, repo)
+        doc = repo.get_by_id(org_id, doc_id)
+        if doc is None:
+            raise RuntimeError("Document not found")
+        doc.status = DocumentStatus.SUCCEEDED
+        doc.error_message = None
+        repo.commit()
+    except Exception as exc:
+        repo.rollback()
+        doc = repo.get_by_id(org_id, doc_id)
+        safe_message = _short_safe_error_message(exc)
+        if doc is not None:
+            doc.status = DocumentStatus.FAILED
+            doc.error_message = safe_message
+            repo.commit()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=safe_message) from exc
 
 
 @router.post("/upload", response_model=DocumentUploadResponse, status_code=status.HTTP_200_OK)
@@ -190,3 +226,34 @@ def get_document_status(
         total_chunks=total_chunks,
         embedded_chunks=embedded_chunks,
     )
+
+
+@router.post(
+    "/{doc_id}/reingest",
+    response_model=DocumentMutationResponse,
+    status_code=status.HTTP_200_OK,
+)
+def reingest_document(
+    doc_id: UUID,
+    context: AuthContext = Depends(require_org),
+    db: Session = Depends(get_db),
+) -> DocumentMutationResponse:
+    repo = DocumentsRepository(db)
+    service = DocumentsService(repo)
+    service.get_document_model(context.org_id, doc_id)
+    _reingest_document(doc_id, context.org_id, repo)
+    return DocumentMutationResponse(success=True, detail="Document re-ingested successfully", status="succeeded")
+
+
+@router.delete(
+    "/{doc_id}",
+    response_model=DocumentMutationResponse,
+    status_code=status.HTTP_200_OK,
+)
+def delete_document(
+    doc_id: UUID,
+    context: AuthContext = Depends(require_org),
+    service: DocumentsService = Depends(get_documents_service),
+) -> DocumentMutationResponse:
+    service.delete_document(context.org_id, doc_id)
+    return DocumentMutationResponse(success=True, detail="Document deleted successfully")

@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 import useSWR, { mutate } from "swr";
 import { api, fetcher } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
-import { useAuth } from "@/lib/auth";
 import { normalizeDomain, widgetSnippet } from "@/lib/widget";
 
 type WidgetConfigResponse = {
@@ -14,7 +13,6 @@ type WidgetConfigResponse = {
 };
 
 export default function WidgetPage() {
-  const { logout } = useAuth();
   const [copied, setCopied] = useState(false);
   const [editing, setEditing] = useState<string>("");
   const [saving, setSaving] = useState(false);
@@ -70,8 +68,8 @@ export default function WidgetPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-5xl flex-col gap-6 p-6">
-      <AppHeader title="Widget" onLogout={logout} />
+    <div className="flex w-full flex-col gap-6">
+      <AppHeader title="Widget" eyebrow="Embed" />
 
       <section className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <h2 className="text-lg font-semibold text-slate-900">Embed snippet</h2>
@@ -133,6 +131,6 @@ export default function WidgetPage() {
           Failed to load widget config.
         </p>
       ) : null}
-    </main>
+    </div>
   );
 }

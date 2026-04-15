@@ -37,3 +37,18 @@ class DocumentListResponse(BaseModel):
     limit: int
     offset: int
     total: int
+
+
+class DocumentMutationResponse(BaseModel):
+    success: bool
+    detail: str | None = None
+    status: str | None = None
+
+
+class DashboardSummaryResponse(BaseModel):
+    total_documents: int
+    documents_completed: int
+    documents_processing: int
+    documents_failed: int
+    total_tokens_used: int
+    total_chunks: int

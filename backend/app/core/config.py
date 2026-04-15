@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     # Ingestion / Embeddings
     embed_model_name: str = "BAAI/bge-small-en-v1.5"
     embed_batch_size: int = 64
+    embed_local_files_only: bool = False
+    embed_preload_on_startup: bool = True
     max_upload_mb: int = 25
     max_text_chars: int = 2_000_000
 

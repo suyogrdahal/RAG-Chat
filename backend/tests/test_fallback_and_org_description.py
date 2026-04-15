@@ -133,7 +133,7 @@ def test_low_confidence_retrieval_triggers_fallback(monkeypatch) -> None:
         user_id = user.id
 
         monkeypatch.setattr("app.services.chat.is_greeting", lambda q: False)
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _mock_search_chunks_empty)
         monkeypatch.setattr(rate_limit_module.time, "time", lambda: 1_700_000_000)
         monkeypatch.setattr(rate_limit_module, "get_redis_client", lambda: _MockRedis())
@@ -158,7 +158,7 @@ def test_llm_err1010_triggers_backend_friendly_fallback(monkeypatch) -> None:
         user_id = user.id
 
         monkeypatch.setattr("app.services.chat.is_greeting", lambda q: False)
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _mock_search_chunks_good)
         monkeypatch.setattr("app.services.chat.generate_llm_response", _mock_llm_err1010)
         monkeypatch.setattr(rate_limit_module.time, "time", lambda: 1_700_000_000)
@@ -217,7 +217,7 @@ def test_tenant_isolation_org_scope_unchanged(monkeypatch) -> None:
         user_b_id = user_b.id
 
         monkeypatch.setattr("app.services.chat.is_greeting", lambda q: False)
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _search_with_capture)
         monkeypatch.setattr(rate_limit_module.time, "time", lambda: 1_700_000_000)
         monkeypatch.setattr(rate_limit_module, "get_redis_client", lambda: _MockRedis())

@@ -8,7 +8,7 @@ from fastapi import HTTPException, UploadFile, status
 from app.core.config import get_settings
 from app.db.models import Document, DocumentStatus
 from app.repositories.documents_repository import DocumentsRepository
-from app.schemas.documents import DocumentOut, DocumentListResponse
+from app.schemas.documents import DashboardSummaryResponse, DocumentOut, DocumentListResponse
 
 ALLOWED_CONTENT_TYPES = {"application/pdf", "text/plain"}
 
@@ -111,4 +111,27 @@ class DocumentsService:
             embedded_chunks=embedded_chunks,
             created_at=doc.created_at,
             updated_at=doc.updated_at,
+        )
+
+    def get_document_model(self, org_id: UUID, doc_id: UUID) -> Document:
+        doc = self.repo.get_by_id(org_id, doc_id)
+        if doc is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        return doc
+
+    def delete_document(self, org_id: UUID, doc_id: UUID) -> None:
+        doc = self.get_document_model(org_id, doc_id)
+        self.repo.delete_chunks_for_document(org_id, doc_id)
+        self.repo.delete_document(doc)
+        self.repo.commit()
+
+    def get_dashboard_summary(self, org_id: UUID) -> DashboardSummaryResponse:
+        counts = self.repo.get_dashboard_counts(org_id)
+        return DashboardSummaryResponse(
+            total_documents=counts["total_documents"],
+            documents_completed=counts["documents_completed"],
+            documents_processing=counts["documents_processing"],
+            documents_failed=counts["documents_failed"],
+            total_tokens_used=0,
+            total_chunks=counts["total_chunks"],
         )

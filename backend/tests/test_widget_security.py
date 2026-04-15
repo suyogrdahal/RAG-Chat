@@ -126,7 +126,7 @@ def test_public_chat_with_allowed_origin_succeeds(monkeypatch) -> None:
             "app.services.chat.generate_llm_response",
             _mock_llm_response,
         )
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _mock_search_chunks)
         monkeypatch.setattr("app.services.chat.is_greeting", lambda q: False)
         monkeypatch.setattr(rate_limit_module.time, "time", lambda: 1_700_000_000)
@@ -190,7 +190,7 @@ def test_public_chat_rate_limit_triggers_429(monkeypatch) -> None:
             "app.services.chat.generate_llm_response",
             _mock_llm_response,
         )
-        monkeypatch.setattr("app.services.chat.embed_texts", lambda texts: [[0.01] * 384])
+        monkeypatch.setattr("app.services.chat.embed_query", lambda text: [0.01] * 384)
         monkeypatch.setattr("app.services.chat.search_similar_chunks", _mock_search_chunks)
         monkeypatch.setattr("app.services.chat.is_greeting", lambda q: False)
         redis = _MockRedis()

@@ -3,7 +3,6 @@
 import { useState, type ChangeEvent, type FormEvent } from "react";
 import { uploadDocument } from "@/lib/api";
 import { AppHeader } from "@/components/AppHeader";
-import { useAuth } from "@/lib/auth";
 
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
 const ACCEPTED_TYPES = ["application/pdf", "text/plain"];
@@ -20,7 +19,6 @@ function validateFile(file: File | null) {
 }
 
 export default function UploadPage() {
-  const { logout } = useAuth();
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -66,12 +64,14 @@ export default function UploadPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-4xl flex-col gap-6 p-6">
-      <AppHeader title="Upload" onLogout={logout} />
-      <h1 className="text-2xl font-semibold text-slate-900">Upload documents</h1>
-      <p className="text-sm text-slate-600">
-        Upload PDF or TXT files. Server-side validation still applies.
-      </p>
+    <div className="flex w-full flex-col gap-6">
+      <AppHeader title="Upload" eyebrow="Ingestion" />
+      <div>
+        <h2 className="text-2xl font-semibold text-slate-900">Upload documents</h2>
+        <p className="text-sm text-slate-600">
+          Upload PDF or TXT files. Server-side validation still applies.
+        </p>
+      </div>
 
       <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="space-y-3">
@@ -113,6 +113,6 @@ export default function UploadPage() {
           {loading ? "Uploading..." : "Upload"}
         </button>
       </form>
-    </main>
+    </div>
   );
 }

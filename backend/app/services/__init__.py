@@ -1,6 +1,7 @@
 from app.services.auth_service import AuthService
 from app.services.chat import ChatService
 from app.services.documents_service import DocumentsService
+from app.services.embeddings import embed_query, embed_texts, get_embedding_model, preload_embedding_model
 from app.services.greetings import is_greeting
 from app.services.prompting import (
     build_fallback_message,
@@ -16,6 +17,10 @@ __all__ = [
     "ChatService",
     "UsersService",
     "DocumentsService",
+    "get_embedding_model",
+    "preload_embedding_model",
+    "embed_texts",
+    "embed_query",
     "search_similar_chunks",
     "is_greeting",
     "build_fallback_message",
