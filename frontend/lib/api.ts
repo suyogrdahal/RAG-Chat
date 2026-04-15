@@ -76,11 +76,10 @@ function getStoredTokens() {
 
 api.interceptors.request.use((config) => {
   const { accessToken } = getStoredTokens();
-  if (accessToken && !config.headers?.Authorization) {
-    config.headers = {
-      ...config.headers,
-      Authorization: `Bearer ${accessToken}`
-    };
+  const headers = axios.AxiosHeaders.from(config.headers);
+  if (accessToken && !headers.get("Authorization")) {
+    headers.set("Authorization", `Bearer ${accessToken}`);
+    config.headers = headers;
   }
   return config;
 });
@@ -115,10 +114,9 @@ api.interceptors.response.use(
       const newRefresh = refreshResponse.data.refresh_token;
       setAuthTokens(newAccess, newRefresh);
 
-      originalRequest.headers = {
-        ...originalRequest.headers,
-        Authorization: `Bearer ${newAccess}`
-      };
+      const retryHeaders = axios.AxiosHeaders.from((originalRequest.headers ?? {}) as any);
+      retryHeaders.set("Authorization", `Bearer ${newAccess}`);
+      originalRequest.headers = retryHeaders;
       return api.request(originalRequest);
     } catch (refreshError) {
       clearAuthTokens();
@@ -154,3 +152,4 @@ export async function uploadDocument(
     }
   });
 }
+
