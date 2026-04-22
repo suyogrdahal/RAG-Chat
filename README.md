@@ -22,10 +22,10 @@ allowing the chatbot to answer questions using organization-specific knowledge o
 - JWT Authentication
 
 **Vector Database**
-- Qdrant / PGVector (TBD)
+- PGVector
 
 **Frontend**
-- React / Next.js
+- Next.js
 - TailwindCSS
 - Custom Web Component
 
@@ -35,7 +35,7 @@ allowing the chatbot to answer questions using organization-specific knowledge o
 
 **Infrastructure**
 - Docker
-- Google Cloud Run or AWS ECS
+- AWS EC2
 
 ## Repository Structure
 /backend → API, RAG pipeline, auth
